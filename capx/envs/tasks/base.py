@@ -252,6 +252,9 @@ class CodeExecutionEnvBase(Env):
             tuple[ObsType, dict[str, Any]]: A tuple containing the observation and info.
         """
         self._step_count = 0
+        # Per-episode API state (IK warm starts) must not leak from the previous trial.
+        for api in self._apis.values():
+            api.reset_state()
         obs, info = self.low_level_env.reset(seed=seed, options=options)
         obs.update(self._get_observation())
         # Reinitialize globals for a fresh episode and prime INPUTS with the reset observation
