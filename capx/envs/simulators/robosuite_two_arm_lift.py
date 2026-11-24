@@ -22,6 +22,10 @@ from robosuite.controllers.composite.composite_controller_factory import (
 from robosuite.utils.camera_utils import get_real_depth_map
 
 from capx.envs.base import BaseEnv
+from capx.envs.simulators.robosuite_base import (
+    reseed_robosuite_env,
+    resolve_capx_path,
+)
 from capx.utils.camera_utils import obs_get_rgb
 from capx.utils.depth_utils import depth_color_to_pointcloud
 
@@ -39,7 +43,7 @@ class RobosuiteTwoArmLiftEnv(BaseEnv):
         enable_render: bool = False,
     ) -> None:
         super().__init__()
-        self.controller_cfg = controller_cfg
+        self.controller_cfg = resolve_capx_path(controller_cfg)
         self.max_steps = max_steps
         self.save_camera_name = "agentview"  # Scene-level camera to show both arms
         self.render_camera_names = ["agentview"]  # Scene-level camera for observations
@@ -117,7 +121,6 @@ class RobosuiteTwoArmLiftEnv(BaseEnv):
         # State tracking
         self._step_count = 0
         self._sim_step_count = 0
-        self._rng = np.random.default_rng(seed)
 
         # Video capture
         self._record_frames = False
@@ -175,7 +178,7 @@ class RobosuiteTwoArmLiftEnv(BaseEnv):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if seed is not None:
-            self._rng = np.random.default_rng(seed)
+            reseed_robosuite_env(self.robosuite_env, seed)
 
         self.robosuite_env.reset()
 

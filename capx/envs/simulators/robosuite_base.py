@@ -7,6 +7,8 @@ robosuite_cubes_restack.py, robosuite_spill_wipe.py, and robosuite_nut_assembly.
 from __future__ import annotations
 
 import os
+import random
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -20,6 +22,35 @@ from capx.utils.camera_utils import obs_get_rgb
 from capx.utils.depth_utils import depth_color_to_pointcloud
 
 os.environ.setdefault("MUJOCO_GL", "egl")
+
+# Repository root (the directory that contains the ``capx`` package).
+CAPX_REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def resolve_capx_path(path: str) -> str:
+    """Resolve a CaP-X-relative path (like the default controller configs) independent of cwd.
+
+    Paths that are absolute or exist relative to the cwd are returned unchanged.
+    """
+    p = Path(path)
+    if p.is_absolute() or p.exists():
+        return str(p)
+    candidate = CAPX_REPO_ROOT / p
+    return str(candidate) if candidate.exists() else str(p)
+
+
+def reseed_robosuite_env(robosuite_env: Any, seed: int) -> None:
+    """Make the next ``robosuite_env.reset()`` produce the scene for ``seed``.
+
+    RoboSuite draws every random scene choice (object placement, the wipe arena's spill,
+    the hammer's size, robot init noise) from ``robosuite_env.rng``, which its placement
+    samplers and arenas share by identity. Its state is reset in place so that sharing is
+    kept. The global NumPy and ``random`` generators are seeded too, in case any code path
+    uses them.
+    """
+    robosuite_env.rng.bit_generator.state = np.random.default_rng(seed).bit_generator.state
+    np.random.seed(seed)
+    random.seed(seed)
 
 
 class RobosuiteBaseEnv(BaseEnv):
@@ -48,7 +79,7 @@ class RobosuiteBaseEnv(BaseEnv):
         enable_render: bool = False,
     ) -> None:
         super().__init__()
-        self.controller_cfg = controller_cfg
+        self.controller_cfg = resolve_capx_path(controller_cfg)
         self.max_steps = max_steps
         self.save_camera_name = "robot0_robotview"
         self.render_camera_names = [self.save_camera_name]
@@ -60,7 +91,6 @@ class RobosuiteBaseEnv(BaseEnv):
         # State tracking
         self._step_count = 0
         self._sim_step_count = 0
-        self._rng = np.random.default_rng(seed)
 
         # Video capture
         self._record_frames = False
@@ -495,4 +525,4 @@ class RobosuiteBaseEnv(BaseEnv):
             )
 
 
-__all__ = ["RobosuiteBaseEnv"]
+__all__ = ["RobosuiteBaseEnv", "reseed_robosuite_env", "resolve_capx_path"]
