@@ -66,6 +66,23 @@ class TrialSummary:
     num_code_blocks: int = 0
 
 
+def parse_trial_ids(spec: str | None) -> list[int] | None:
+    """Trial ids from ``"3,7,10-12"`` -> ``[3, 7, 10, 11, 12]`` (sorted, unique); None/"" -> None."""
+    if spec is None or not spec.strip():
+        return None
+    ids: set[int] = set()
+    for part in spec.split(","):
+        part = part.strip()
+        lo, sep, hi = part.partition("-")
+        if not lo.isdigit() or (sep and not hi.isdigit()):
+            raise ValueError(f"bad --trial-ids entry {part!r}: use numbers and ranges like 3,7,10-12")
+        first, last = int(lo), int(hi) if sep else int(lo)
+        if first < 1 or last < first:
+            raise ValueError(f"bad --trial-ids entry {part!r}: trial ids start at 1 and ranges must not run backwards")
+        ids.update(range(first, last + 1))
+    return sorted(ids)
+
+
 def run_server_proc(api_cfg) -> multiprocessing.Process:
     # Make sure we use spawn for CUDA
     ctx = multiprocessing.get_context("spawn")
@@ -132,6 +149,7 @@ def _load_config(args: LaunchArgs) -> tuple[Any, dict[str, Any], list]:
         if args.use_oracle_code is not None
         else configs_dict.get("use_oracle_code", False),
         "resume_idx": configs_dict.get("resume_idx", None),
+        "trial_ids": parse_trial_ids(getattr(args, "trial_ids", None)),
         "use_visual_feedback": args.use_visual_feedback
         if args.use_visual_feedback is not None
         else configs_dict.get("use_visual_feedback", False),

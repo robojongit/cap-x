@@ -43,6 +43,7 @@ from capx.utils.launch_utils import (
     _parse_multi_turn_decision,
     _save_trial_artifacts,
 )
+from capx.utils.trial_records import RECORDER
 from capx.utils.video_utils import _encode_video_base64, _write_video
 
 # Use TYPE_CHECKING to avoid circular imports for type hints only
@@ -650,6 +651,7 @@ def _run_single_trial(
 
     # --- 1. Reset environment ---
     obs, _ = env.reset(options={"trial": trial}, seed=trial)
+    RECORDER.mark_reset_done()
     # Reset the SIGALRM timer AFTER env.reset() so the timeout only covers
     # actual task execution, not scene loading / cuRobo JIT compilation.
     import signal

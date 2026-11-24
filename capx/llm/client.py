@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 import requests
 
+from capx.utils.trial_records import RECORDER
+
 if TYPE_CHECKING:
     from capx.envs.launch import LaunchArgs
 
@@ -177,6 +179,45 @@ def _completions_to_responses_convert_prompt(prompt: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Request helpers: timeout / retry knobs and infrastructure-event logging
+# ---------------------------------------------------------------------------
+
+# Statuses the client treats as "server trouble, ask again".
+_RETRY_STATUSES = (404, 500, 502, 503, 504)
+
+
+def _request_timeout_seconds() -> float:
+    """Per-request timeout. CAPX_LLM_TIMEOUT_S overrides the default of 200 s."""
+    return float(os.environ.get("CAPX_LLM_TIMEOUT_S", "200"))
+
+
+def _retry_sleep_seconds() -> float:
+    """Sleep before re-asking after a server error: 240 s +- 90 s, or CAPX_LLM_RETRY_SLEEP_S +- 37.5%."""
+    base = float(os.environ.get("CAPX_LLM_RETRY_SLEEP_S", "240"))
+    return base + random.uniform(-0.375 * base, 0.375 * base)
+
+
+def _max_retries() -> int | None:
+    """Retries after a server error before giving up. CAPX_LLM_MAX_RETRIES; unset = ask forever."""
+    raw = os.environ.get("CAPX_LLM_MAX_RETRIES", "")
+    return int(raw) if raw.strip() else None
+
+
+def _post_json(server_url: str, headers: dict, payload: dict) -> requests.Response:
+    """POST the request; log timeouts and connection errors for the trial record, then re-raise."""
+    try:
+        return requests.post(
+            server_url, headers=headers, data=json.dumps(payload), timeout=_request_timeout_seconds()
+        )
+    except requests.exceptions.Timeout as exc:
+        RECORDER.event("request_timeout", detail=repr(exc))
+        raise
+    except requests.exceptions.RequestException as exc:
+        RECORDER.event("connection_error", detail=repr(exc))
+        raise
+
+
 def query_model(args: "LaunchArgs | ModelQueryArgs", prompt: list[dict]) -> str:
     """Query vLLM server for code generation.
 
@@ -244,23 +285,32 @@ def query_model(args: "LaunchArgs | ModelQueryArgs", prompt: list[dict]) -> str:
     start_time = time.time()
 
     # keep calling until it works
-    response = requests.post(
-        server_url, headers=headers, data=json.dumps(payload), timeout=200
-    )
+    response = _post_json(server_url, headers, payload)
     retry = 1
-    while response.status_code in [404, 500, 502, 503, 504]:
-        sleep_time = 240 + random.uniform(-90, 90)
+    while response.status_code in _RETRY_STATUSES:
+        RECORDER.event("http_error", status=response.status_code, detail=response.text)
+        limit = _max_retries()
+        if limit is not None and retry > limit:
+            break  # raise_for_status() below turns the last answer into an error
+        sleep_time = _retry_sleep_seconds()
         print(f"Retry {retry}. Model query failed with status code {response.status_code}. Error: {response.text}. Retrying in {sleep_time} seconds...")
         time.sleep(sleep_time)
-        response = requests.post(
-            server_url, headers=headers, data=json.dumps(payload), timeout=200
-        )
+        response = _post_json(server_url, headers, payload)
         retry += 1
 
     end_time = time.time()
     print(f"Time taken to query model: {end_time - start_time:.2f} seconds")
+    if response.status_code >= 400 and response.status_code not in _RETRY_STATUSES:
+        RECORDER.event("http_error", status=response.status_code, detail=response.text)
     response.raise_for_status()
-    body = response.json()
+    try:
+        body = response.json()
+        if not isinstance(body, dict):
+            raise ValueError("not a JSON object")
+    except ValueError as exc:
+        RECORDER.event("bad_response", status=response.status_code, detail=response.text)
+        raise RuntimeError(f"Model server sent an unusable answer: {response.text[:200]!r}") from exc
+    RECORDER.call_ok(end_time - start_time, body.get("usage"))
     out = {}
     if args.debug:
         print(json.dumps(body, indent=2))

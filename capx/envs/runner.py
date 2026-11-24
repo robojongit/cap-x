@@ -31,6 +31,11 @@ from capx.utils.launch_utils import (
     run_server_proc,
 )
 from capx.utils.parallel_eval import run_parallel_with_setup
+from capx.utils.trial_records import (
+    RECORDER,
+    archive_previous_attempts,
+    write_record,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -142,6 +147,8 @@ def _run_headless_trials(
     trial_ids = list(range(1, config["total_trials"] + 1))
     if config.get("resume_idx") is not None:
         trial_ids = list(range(config["resume_idx"], config["total_trials"] + 1))
+    if config.get("trial_ids"):
+        trial_ids = list(config["trial_ids"])
 
     # Execute trials
     if config["num_workers"] > 1:
@@ -199,37 +206,101 @@ def _run_trial_with_retries(
     config: dict[str, Any],
     multi_turn_prompt: str | None,
 ) -> TrialSummary:
-    """Attempt a trial up to MAX_TRIAL_RETRIES times, retrying on timeout."""
-    for attempt in range(MAX_TRIAL_RETRIES):
-        try:
-            is_last_attempt = attempt == MAX_TRIAL_RETRIES - 1
-            return _run_single_trial_with_timeout(
-                env=env,
-                trial=trial,
-                args=args,
-                config=config,
-                multi_turn_prompt=multi_turn_prompt,
-                timeout_s=TRIAL_TIMEOUT_SECONDS,
-                raise_on_timeout=not is_last_attempt,
-            )
-        except TimeoutError:
-            print(f"Trial {trial} timed out (attempt {attempt + 1}/{MAX_TRIAL_RETRIES}). Retrying...")
+    """Attempt a trial up to MAX_TRIAL_RETRIES times, retrying on timeout.
 
-    # All retries exhausted
-    return TrialSummary(
-        trial=trial,
-        success=False,
-        reward=0.0,
-        terminated=False,
-        truncated=True,
-        sandbox_rc=1,
-        log=f"Trial {trial} failed after {MAX_TRIAL_RETRIES} timeout retries",
-        task_completed=False,
-        code_path=None,
-        num_regenerations=0,
-        num_finishes=0,
-        num_code_blocks=0,
-    )
+    Whatever happens, one record per launch is appended to ``<output_dir>/trial_records``
+    (see :mod:`capx.utils.trial_records`): outcome, timing, tokens, and every infrastructure event.
+    """
+    if config.get("output_dir"):
+        archive_previous_attempts(config["output_dir"], trial)
+    events: list[dict[str, Any]] = []
+    stats: dict[str, Any] = {}
+    summary: TrialSummary | None = None
+    attempts = 0
+    try:
+        for attempt in range(MAX_TRIAL_RETRIES):
+            attempts = attempt + 1
+            RECORDER.begin_attempt(attempts)
+            try:
+                is_last_attempt = attempt == MAX_TRIAL_RETRIES - 1
+                summary = _run_single_trial_with_timeout(
+                    env=env,
+                    trial=trial,
+                    args=args,
+                    config=config,
+                    multi_turn_prompt=multi_turn_prompt,
+                    timeout_s=TRIAL_TIMEOUT_SECONDS,
+                    raise_on_timeout=not is_last_attempt,
+                )
+                stats = RECORDER.end_attempt()
+                events.extend(stats["events"])
+                break
+            except TimeoutError:
+                stats = RECORDER.end_attempt()
+                events.extend(stats["events"])
+                print(f"Trial {trial} timed out (attempt {attempt + 1}/{MAX_TRIAL_RETRIES}). Retrying...")
+    except Exception as exc:
+        stats = RECORDER.end_attempt()
+        events.extend(stats["events"])
+        _write_trial_record(config, trial, None, stats, events, attempts, error=f"{type(exc).__name__}: {exc}")
+        raise
+
+    if summary is None:
+        # All retries exhausted
+        summary = TrialSummary(
+            trial=trial,
+            success=False,
+            reward=0.0,
+            terminated=False,
+            truncated=True,
+            sandbox_rc=1,
+            log=f"Trial {trial} failed after {MAX_TRIAL_RETRIES} timeout retries",
+            task_completed=False,
+            code_path=None,
+            num_regenerations=0,
+            num_finishes=0,
+            num_code_blocks=0,
+        )
+    _write_trial_record(config, trial, summary, stats, events, attempts)
+    return summary
+
+
+def _write_trial_record(
+    config: dict[str, Any],
+    trial: int,
+    summary: TrialSummary | None,
+    stats: dict[str, Any],
+    events: list[dict[str, Any]],
+    attempts: int,
+    error: str | None = None,
+) -> None:
+    """Append the trial's record; recording must never break a benchmark run."""
+    if not config.get("output_dir"):
+        return
+    record: dict[str, Any] = {
+        "attempts": attempts,
+        **{k: v for k, v in stats.items() if k != "events"},
+        "events": events,
+        "error": error,
+        "task_completed": None,
+        "success": False,
+    }
+    if summary is not None:
+        record.update(
+            task_completed=summary.task_completed,
+            success=summary.success,
+            reward=summary.reward,
+            sandbox_rc=summary.sandbox_rc,
+            terminated=summary.terminated,
+            truncated=summary.truncated,
+            num_code_blocks=summary.num_code_blocks,
+            num_regenerations=summary.num_regenerations,
+            num_finishes=summary.num_finishes,
+        )
+    try:
+        write_record(config["output_dir"], trial, record)
+    except OSError as exc:  # pragma: no cover - disk full and the like
+        print(f"WARNING: could not write the record of trial {trial}: {exc}")
 
 
 def _run_trial_batch(
@@ -306,6 +377,8 @@ def _run_single_trial_with_timeout(
 
         if not is_timeout:
             raise
+        if timed_out:
+            RECORDER.event("trial_timeout", detail=f"trial exceeded {timeout_seconds} s")
         if raise_on_timeout:
             raise TimeoutError(f"Trial {trial} timed out") from exc
 

@@ -97,6 +97,10 @@ class LaunchArgs:
     num_workers: int | None = None
     """Number of parallel worker processes to use. Overrides the value in the YAML config."""
 
+    trial_ids: str | None = None
+    """Run only these trials, e.g. ``3,7,10-12`` (seed = trial id). Default: 1..total_trials.
+    Used to rerun trials without redoing the others; results are appended to the output dir."""
+
     record_video: bool | None = None
     """Whether to record and save videos of the environment execution."""
 
