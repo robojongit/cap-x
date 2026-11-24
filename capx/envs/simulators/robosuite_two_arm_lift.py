@@ -600,7 +600,7 @@ class RobosuiteTwoArmLiftEnv(BaseEnv):
         )
         if len(self.render_camera_names) == 1:
             robosuite_obs["robot0_robotview"] = robosuite_obs[self.render_camera_names[0]]
-        else:
+        elif len(self.render_camera_names) > 1:
             raise ValueError("Unhandle case, with multiple camera names")
 
         return robosuite_obs

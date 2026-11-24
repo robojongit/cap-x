@@ -3,7 +3,6 @@ import time
 from typing import Any
 
 import numpy as np
-import open3d as o3d
 import viser.transforms as vtf
 from PIL import Image, ImageDraw
 from scipy.spatial.transform import Rotation as SciRotation
@@ -145,6 +144,8 @@ class FrankaControlNutAssemblyVisualApi(ApiBase):
             )
             @ camera_tf
         )
+
+        import open3d as o3d  # lazy: perception extra
 
         o3d_points = o3d.geometry.PointCloud()
         o3d_points.points = o3d.utility.Vector3dVector(points)

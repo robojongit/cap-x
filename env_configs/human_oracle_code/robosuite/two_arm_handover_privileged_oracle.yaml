@@ -7,8 +7,8 @@ env:
     low_level:
       _target_: capx.envs.simulators.robosuite_handover.RobosuiteHandoverEnv
       viser_debug: false
-      privileged: false
-      enable_render: true
+      privileged: true
+      enable_render: false
     apis:
       - FrankaHandoverPrivilegedApi
     prompt: |
@@ -39,7 +39,7 @@ api_servers:
     robot: panda_description
     target_link: panda_hand
 
-record_video: true
+record_video: false
 output_dir: ./outputs/two_arm_handover_privileged_oracle
 
 trials: 100

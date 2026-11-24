@@ -5,6 +5,8 @@ env:
   cfg:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
     low_level: two_arm_lift_robosuite  # Registry name for low-level env
+    privileged: true
+    enable_render: false
     apis:
       - FrankaTwoArmLiftPrivilegedApi
     prompt: |
@@ -45,7 +47,7 @@ api_servers:
     robot: panda_description
     target_link: panda_hand
 
-record_video: true
+record_video: false
 output_dir: ./outputs/two_arm_lift_code_exec_privileged_oracle
 
 trials: 100

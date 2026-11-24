@@ -50,6 +50,20 @@ uv python install 3.10 && uv venv -p 3.10
 uv sync
 ```
 
+### Slim install (privileged RoboSuite tasks, CPU only)
+
+The default dependencies are enough to run the 7 privileged RoboSuite tasks (no Torch, Ray, Open3D or
+perception models). Only the RoboSuite submodule is needed:
+
+```bash
+git submodule update --init capx/third_party/robosuite
+uv venv -p 3.12 && uv pip install -e .   # uv.lock still has to be regenerated for `uv sync`
+uv run python capx/envs/launch.py --config-path env_configs/human_oracle_code/robosuite/franka_robosuite_cube_lifting_privileged_oracle.yaml --total-trials 3 --num-workers 1
+```
+
+The PyRoKi IK server is started automatically from the config's `api_servers`. Perception-based
+configs need `uv sync --extra perception` (and the sam3 / contact_graspnet submodules).
+
 ### Simulator-specific setup
 
 Pick **one** simulator family to install, as Robosuite (1.5.0) and LIBERO (`robosuite==1.4.0`) would be in conflict.

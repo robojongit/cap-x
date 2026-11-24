@@ -4,7 +4,9 @@ env:
   _target_: capx.envs.tasks.franka.two_arm_handover.TwoArmHandoverCodeEnv
   cfg:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
-    low_level: two_arm_handover_robosuite 
+    low_level: two_arm_handover_robosuite
+    privileged: true
+    enable_render: false
     apis:
       - FrankaHandoverPrivilegedApi
     # prompt is inherited from TwoArmHandoverCodeEnv class default
@@ -16,7 +18,7 @@ api_servers:
     robot: panda_description
     target_link: panda_hand
 
-record_video: true
+record_video: false
 output_dir: ./outputs/two_arm_handover_privileged
 
 trials: 100

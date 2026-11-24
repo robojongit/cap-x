@@ -18,7 +18,6 @@ import pathlib
 from typing import Any
 
 import numpy as np
-import open3d as o3d
 from PIL import Image, ImageDraw
 from scipy.spatial.transform import Rotation as SciRotation
 
@@ -330,6 +329,7 @@ def get_oriented_bounding_box_from_3d_points(points: np.ndarray) -> dict[str, An
         dict with "center", "extent", "R" keys.
     """
     points = points + np.random.normal(0, 0.0001, points.shape)
+    import open3d as o3d  # lazy: perception extra
     o3d_points = o3d.geometry.PointCloud()
     o3d_points.points = o3d.utility.Vector3dVector(points)
     o3d_points, _ = o3d_points.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)

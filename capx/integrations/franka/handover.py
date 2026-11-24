@@ -3,7 +3,6 @@ import pathlib
 import time
 import viser.transforms as vtf
 import numpy as np
-import open3d as o3d
 from PIL import Image, ImageDraw
 from scipy.spatial.transform import Rotation as SciRotation
 from capx.integrations.vision.sam3 import init_sam3
@@ -154,6 +153,8 @@ class FrankaHandoverApi(ApiBase):
         )
 
         points = depth_to_pointcloud(depth[:, :, 0], obs[camera_name]["intrinsics"])[idxs]
+
+        import open3d as o3d  # lazy: perception extra
 
         o3d_points = o3d.geometry.PointCloud()
         o3d_points.points = o3d.utility.Vector3dVector(points)
