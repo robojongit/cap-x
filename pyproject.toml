@@ -43,6 +43,7 @@ dependencies = [
   "opencv-python-headless",
   "pillow>=10",
   "cloudpickle",
+  "h5py",  # imported by robosuite.utils.camera_utils
   "robosuite",
 ]
 
@@ -65,7 +66,6 @@ perception = [
   "einops",
   "decord",
   "pycocotools",
-  "h5py",
   "ray==2.48.0",
   "pyrender",
   "mediapy>=1.2.5",
