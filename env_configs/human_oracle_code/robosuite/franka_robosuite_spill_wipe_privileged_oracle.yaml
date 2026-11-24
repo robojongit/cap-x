@@ -6,6 +6,7 @@ env:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
     low_level: franka_robosuite_spill_wipe_low_level
     privileged: true
+    enable_render: false
     apis:
       - FrankaControlSpillWipePrivilegedApi
     # prompt is inherited from FrankaSpillWipeCodeEnv class default

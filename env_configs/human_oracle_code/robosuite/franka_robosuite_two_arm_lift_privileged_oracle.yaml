@@ -5,6 +5,8 @@ env:
   cfg:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
     low_level: two_arm_lift_robosuite  # Registry name for low-level env
+    privileged: true
+    enable_render: false
     apis:
       - FrankaTwoArmLiftPrivilegedApi
     prompt: |

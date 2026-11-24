@@ -6,6 +6,7 @@ env:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
     low_level: franka_robosuite_cubes_low_level
     privileged: true
+    enable_render: false
     apis:
       - FrankaControlPrivilegedApi
     # prompt is inherited from FrankaPickPlaceCodeEnv class default
