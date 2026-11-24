@@ -16,44 +16,34 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 
+# Slim default install: exactly what the privileged RoboSuite tasks need (CPU only,
+# no Torch / Ray / Open3D / perception models). Heavy packages live in the
+# `perception` extra below.
 dependencies = [
   "gymnasium>=0.29",
   "numpy>=1.26",
-  "torch>=2.8",
-  "torchvision>=0.23",
   "tyro>=0.8.5",
   "pydantic>=2.7",
   "rich>=13.7",
   "scipy>=1.12",
   "matplotlib>=3.10",
-  "imageio[ffmpeg]",
+  "imageio[ffmpeg]>=0.6.0",
   "requests",
   "tqdm",
-  "h5py",
-  "einops",
-  "decord",
-  "pycocotools",
   "pyyaml",
   "omegaconf",
-  "open3d",
   "pyroki @ git+https://github.com/chungmin99/pyroki.git",
   "robot_descriptions>=1.16.0",
   "yourdfpy>=0.0.56",
   "viser>=0.2.0",
   "trimesh>=4.4.0",
-  "imageio[ffmpeg]>=0.6.0",
-  "sam3",
   "msgpack_numpy",
-  "ray==2.48.0",
-  "mediapy>=1.2.5",
   "uvicorn",
   "fastapi",
-  "transformers",
-  "openai",
-  "pyrender",
   "opencv-python-headless",
   "pillow>=10",
   "cloudpickle",
+  "robosuite",
 ]
 
 [project.optional-dependencies]
@@ -66,9 +56,25 @@ dev = [
   "requests>=2.32",
 ]
 
+perception = [
+  "torch>=2.8",
+  "torchvision>=0.23",
+  "open3d",
+  "sam3",
+  "transformers",
+  "einops",
+  "decord",
+  "pycocotools",
+  "h5py",
+  "ray==2.48.0",
+  "pyrender",
+  "mediapy>=1.2.5",
+  "openai",
+]
+# NOTE: LIBERO needs its own robosuite fork (capx/third_party/libero_dependencies/robosuite),
+# which cannot coexist with the robosuite in the default dependencies.
 libero = [
   "libero",
-  "robosuite",
   "easydict==1.9",
   "robomimic==0.2.0",
   "einops==0.4.1",
@@ -79,9 +85,7 @@ libero = [
   "gym==0.25.2",
   "scikit-learn",
 ]
-robosuite = [
-  "robosuite"
-]
+robosuite = []  # kept for compatibility: robosuite is now a default dependency
 molmo = [
   "torch==2.9.1",
   "vllm==0.15.0 ; extra == 'molmo'",
@@ -116,10 +120,7 @@ verl = [
 ]
 
 [tool.uv.sources]
-robosuite = [
-  { path = "capx/third_party/robosuite", extra = "robosuite", editable = true},
-  { path = "capx/third_party/libero_dependencies/robosuite", extra = "libero", editable = true },
-]
+robosuite = { path = "capx/third_party/robosuite", editable = true }
 libero = [
   { path = "capx/third_party/LIBERO-PRO", extra = "libero", editable = true},
 ]
