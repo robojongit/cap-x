@@ -22,7 +22,10 @@ from robosuite.utils import RandomizationError
 from robosuite.utils.placement_samplers import ObjectPositionSampler
 from robosuite.utils.transform_utils import quat_multiply
 
-from capx.envs.simulators.robosuite_base import RobosuiteBaseEnv
+from capx.envs.simulators.robosuite_base import (
+    RobosuiteBaseEnv,
+    reseed_robosuite_env,
+)
 
 
 class StackedObjectRandomSampler(ObjectPositionSampler):
@@ -355,7 +358,7 @@ class FrankaRobosuiteCubesRestackLowLevel(RobosuiteBaseEnv):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if seed is not None:
-            self._rng = np.random.default_rng(seed)
+            reseed_robosuite_env(self.robosuite_env, seed)
 
         self.robosuite_env.reset()
         # Adjust initial orientation

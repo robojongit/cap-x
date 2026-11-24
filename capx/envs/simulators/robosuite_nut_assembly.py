@@ -21,7 +21,10 @@ from robosuite.utils.camera_utils import get_real_depth_map
 from robot_descriptions.loaders.yourdfpy import load_robot_description
 from viser.extras import ViserUrdf
 
-from capx.envs.simulators.robosuite_base import RobosuiteBaseEnv
+from capx.envs.simulators.robosuite_base import (
+    RobosuiteBaseEnv,
+    reseed_robosuite_env,
+)
 from capx.utils.camera_utils import obs_get_rgb
 from capx.utils.depth_utils import depth_color_to_pointcloud
 
@@ -111,6 +114,11 @@ class FrankaRobosuiteNutAssembly(RobosuiteBaseEnv):
         self.nut_id = self.robosuite_env.nut_to_id[self.nut_type]
         self.nuts = self.robosuite_env.nuts
 
+        # RoboSuite gives the top-level SequentialCompositeSampler its own unseeded generator.
+        # It never draws from it (its sub-samplers use robosuite_env.rng), but share the
+        # one generator anyway so every scene sampler is seeded by reseed_robosuite_env().
+        self.robosuite_env.placement_initializer.rng = self.robosuite_env.rng
+
         self._init_robot_links()
 
         # Precompute fast joint qpos addresses for Panda (avoid heavy _get_observations in tight loops)
@@ -154,7 +162,7 @@ class FrankaRobosuiteNutAssembly(RobosuiteBaseEnv):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if seed is not None:
-            self._rng = np.random.default_rng(seed)
+            reseed_robosuite_env(self.robosuite_env, seed)
 
         first_obs = self.robosuite_env.reset()
         self.home_joint_position = np.array(first_obs["robot0_joint_pos"], dtype=np.float64)
