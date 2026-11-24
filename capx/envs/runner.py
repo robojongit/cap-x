@@ -299,7 +299,7 @@ def _write_trial_record(
         )
     try:
         write_record(config["output_dir"], trial, record)
-    except OSError as exc:  # pragma: no cover - disk full and the like
+    except Exception as exc:  # disk full and the like
         print(f"WARNING: could not write the record of trial {trial}: {exc}")
 
 

@@ -12,6 +12,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import numpy as np
 import pytest
 import requests
 
@@ -213,7 +214,7 @@ def test_write_record_appends_and_archive_moves_old_artifacts(tmp_path: Path):
     assert (out / "trial_08_sandboxrc_0_reward_1.000_taskcompleted_1").exists()  # other trials untouched
     assert trial_records.archive_previous_attempts(out, 7) == []
     trial_records.write_record(out, 7, {"task_completed": False})
-    trial_records.write_record(out, 7, {"task_completed": True})
+    trial_records.write_record(out, 7, {"task_completed": np.bool_(True), "reward": np.float64(1.0)})
     lines = [json.loads(x) for x in (out / "trial_records" / "trial_07.jsonl").read_text().splitlines()]
     assert [r["task_completed"] for r in lines] == [False, True] and lines[0]["seed"] == 7 and lines[0]["schema"] == 1
 

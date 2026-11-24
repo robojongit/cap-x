@@ -114,6 +114,11 @@ class TrialRecorder:
 RECORDER = TrialRecorder()
 
 
+def _json_default(o: Any) -> Any:
+    """numpy scalars (``task_completed`` is a numpy bool in some tasks) and anything else odd."""
+    return o.item() if hasattr(o, "item") else str(o)
+
+
 def records_dir(output_dir: str | os.PathLike[str]) -> Path:
     return Path(output_dir) / "trial_records"
 
@@ -123,7 +128,17 @@ def write_record(output_dir: str | os.PathLike[str], trial: int, record: dict[st
     d = records_dir(output_dir)
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"trial_{trial:02d}.jsonl"
-    line = json.dumps({"schema": SCHEMA, "trial": trial, "seed": trial, "time": time.strftime("%FT%TZ", time.gmtime()), "pid": os.getpid(), **record})
+    line = json.dumps(
+        {
+            "schema": SCHEMA,
+            "trial": trial,
+            "seed": trial,
+            "time": time.strftime("%FT%TZ", time.gmtime()),
+            "pid": os.getpid(),
+            **record,
+        },
+        default=_json_default,
+    )
     with path.open("a") as f:
         f.write(line + "\n")
         f.flush()
