@@ -18,7 +18,7 @@ api_servers:
     robot: panda_description
     target_link: panda_hand
 
-record_video: true
+record_video: false
 output_dir: ./outputs/franka_robosuite_cube_lifting_privileged_oracle
 
 trials: 100

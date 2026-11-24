@@ -39,7 +39,7 @@ api_servers:
     robot: panda_description
     target_link: panda_hand
 
-record_video: true
+record_video: false
 output_dir: ./outputs/two_arm_handover_privileged_oracle
 
 trials: 100

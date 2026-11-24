@@ -19,7 +19,7 @@ api_servers:
     target_link: panda_hand
     
     
-record_video: true
+record_video: false
 output_dir: ./outputs/franka_robosuite_nut_assembly_privileged_oracle
 use_oracle_code: true
 trials: 100
