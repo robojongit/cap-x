@@ -57,12 +57,14 @@ perception models). Only the RoboSuite submodule is needed:
 
 ```bash
 git submodule update --init capx/third_party/robosuite
-uv venv -p 3.12 && uv pip install -e .   # uv.lock still has to be regenerated for `uv sync`
+uv sync          # slim default dependencies, from uv.lock
 uv run python capx/envs/launch.py --config-path env_configs/human_oracle_code/robosuite/franka_robosuite_cube_lifting_privileged_oracle.yaml --total-trials 3 --num-workers 1
 ```
 
 The PyRoKi IK server is started automatically from the config's `api_servers`. Perception-based
-configs need `uv sync --extra perception` (and the sam3 / contact_graspnet submodules).
+configs need `uv sync --extra perception`. This fork does not package the LIBERO, verl, sam3,
+contact_graspnet or cuRobo extras (their sources were uninitialised submodules, which made
+`uv lock` / `uv sync` fail); install those by hand if you need them.
 
 ### Simulator-specific setup
 
