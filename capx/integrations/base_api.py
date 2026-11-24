@@ -89,6 +89,22 @@ class ApiBase(ABC):
 
         log_step_update(text=text, images=images)
 
+    # Attributes that hold an IK solution between calls (warm start for the next
+    # solve). They must not survive an environment reset: a trial's outcome would
+    # then depend on which trial the worker ran before it.
+    IK_WARM_START_ATTRS: tuple[str, ...] = ("cfg", "cfg_0", "cfg_1")
+
+    def reset_state(self) -> None:
+        """Forget per-episode state. Called by the environment on every ``reset``.
+
+        The default clears the IK warm starts (``cfg``, ``cfg_0``, ``cfg_1``), so the
+        first IK solve of every episode starts cold, as in a fresh worker.
+        APIs with further per-episode state override this and call ``super()``.
+        """
+        for attr in self.IK_WARM_START_ATTRS:
+            if hasattr(self, attr):
+                setattr(self, attr, None)
+
     @abstractmethod
     def functions(self) -> dict[str, Callable[..., Any]]:
         """Return mapping of public function name -> callable."""
